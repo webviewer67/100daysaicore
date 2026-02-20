@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>100 Day AI Coach</title>
+
+<style>
+body{
+  margin:0;
+  font-family:'Poppins',sans-serif;
+  background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);
+  color:white;
+}
+
+.container{
+  max-width:500px;
+  margin:auto;
+  padding:20px;
+}
+
+.topbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  background:rgba(255,255,255,0.08);
+  padding:10px 15px;
+  border-radius:15px;
+  font-weight:bold;
+}
+
+.centerInfo{
+  text-align:center;
+  margin-top:10px;
+}
+
+.card{
+  margin-top:20px;
+  padding:20px;
+  background:rgba(255,255,255,0.06);
+  border-radius:20px;
+  backdrop-filter:blur(10px);
+}
+
+button,input,select{
+  width:100%;
+  padding:12px;
+  margin-top:10px;
+  border:none;
+  border-radius:10px;
+  font-size:15px;
+}
+
+button{
+  background:#ff2e63;
+  color:white;
+  font-weight:bold;
+}
+
+#aiResponse{
+  margin-top:15px;
+  background:rgba(0,0,0,0.3);
+  padding:15px;
+  border-radius:15px;
+  font-size:14px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h2 style="text-align:center;">🔥 100 Day AI Coach</h2>
+
+<!-- SETUP -->
+<div id="setup" class="card">
+<input id="nameInput" placeholder="Your Name">
+<input id="ageInput" type="number" placeholder="Your Age">
+
+<select id="goalInput">
+<option value="weight loss">Weight Loss</option>
+<option value="muscle gain">Muscle Gain</option>
+<option value="healthy lifestyle">Healthy Lifestyle</option>
+<option value="productivity">Productivity</option>
+</select>
+
+<select id="personalityInput">
+<option value="hardcore">Hardcore 🔥</option>
+<option value="balanced">Balanced ⚖️</option>
+<option value="chill">Chill 🌿</option>
+</select>
+
+<button onclick="startApp()">Start Challenge</button>
+</div>
+
+<!-- APP -->
+<div id="app" style="display:none;">
+
+<div class="topbar">
+  <div id="streakBox">🔥 0</div>
+  <div id="xpBox">⭐ 0 XP</div>
+</div>
+
+<div class="centerInfo">
+  <div id="welcomeText">Welcome</div>
+  <div id="dayLevelText">Day 1 • Level 1</div>
+</div>
+
+<div class="card">
+  <h3>🎯 Daily Task</h3>
+  <div id="dailyTask">Loading...</div>
+
+  <button onclick="completeDay()">Complete Day</button>
+  <button onclick="askAI()">Ask AI Coach</button>
+
+  <div id="aiResponse"></div>
+</div>
+
+</div>
+</div>
+
+<script>
+
+function getData(){
+  let data=JSON.parse(localStorage.getItem("coachApp"));
+  if(!data){
+    data={
+      name:"",
+      age:"",
+      goal:"",
+      personality:"",
+      day:1,
+      streak:0,
+      xp:0,
+      level:1,
+      lastComplete:0
+    };
+  }
+  return data;
+}
+
+function saveData(data){
+  localStorage.setItem("coachApp",JSON.stringify(data));
+}
+
+function startApp(){
+  let data=getData();
+
+  data.name=nameInput.value || "";
+  data.age=ageInput.value || "";
+  data.goal=goalInput.value || "";
+  data.personality=personalityInput.value || "";
+
+  saveData(data);
+
+  setup.style.display="none";
+  app.style.display="block";
+
+  loadApp();
+  generateDailyTask();
+}
+
+function loadApp(){
+  let data=getData();
+
+  welcomeText.innerText="Welcome";
+  dayLevelText.innerText=`Day ${data.day} • Level ${data.level}`;
+  streakBox.innerText=`🔥 ${data.streak}`;
+  xpBox.innerText=`⭐ ${data.xp} XP`;
+}
+
+async function generateDailyTask(){
+  let data=getData();
+
+  const res=await fetch("/.netlify/functions/ai",{
+    method:"POST",
+    body:JSON.stringify({
+      type:"daily",
+      goal:data.goal,
+      personality:data.personality,
+      day:data.day
+    })
+  });
+
+  const result=await res.json();
+  dailyTask.innerText=result.reply;
+}
+
+function completeDay(){
+  let data=getData();
+  const now=Date.now();
+  const diff=now-data.lastComplete;
+
+  if(diff<86400000){
+    alert("Come back tomorrow 🔥");
+    return;
+  }
+
+  if(diff>172800000) data.streak=0;
+
+  data.day++;
+  data.streak++;
+  data.xp+=50;
+
+  if(data.xp>=data.level*200){
+    data.level++;
+  }
+
+  data.lastComplete=now;
+
+  saveData(data);
+  loadApp();
+  generateDailyTask();
+}
+
+async function askAI(){
+  let question=prompt("Ask your AI coach:");
+
+  if(!question) return;
+
+  let data=getData();
+
+  const res=await fetch("/.netlify/functions/ai",{
+    method:"POST",
+    body:JSON.stringify({
+      type:"assistant",
+      question:question,
+      goal:data.goal,
+      personality:data.personality
+    })
+  });
+
+  const result=await res.json();
+  aiResponse.innerText=result.reply;
+}
+
+if(localStorage.getItem("coachApp")){
+  setup.style.display="none";
+  app.style.display="block";
+  loadApp();
+  generateDailyTask();
+}
+
+</script>
+</body>
+</html>
