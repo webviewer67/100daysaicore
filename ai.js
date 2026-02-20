@@ -1,247 +1,180 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>100 Day AI Coach</title>
+import OpenAI from "openai";
 
-<style>
-body{
-  margin:0;
-  font-family:'Poppins',sans-serif;
-  background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);
-  color:white;
+/* ================================
+   SIMPLE IN-MEMORY STORAGE
+================================ */
+if (!globalThis.userMemory) {
+  globalThis.userMemory = {};
 }
 
-.container{
-  max-width:500px;
-  margin:auto;
-  padding:20px;
-}
+export async function handler(event) {
 
-.topbar{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  background:rgba(255,255,255,0.08);
-  padding:10px 15px;
-  border-radius:15px;
-  font-weight:bold;
-}
+  try {
 
-.centerInfo{
-  text-align:center;
-  margin-top:10px;
-}
+    if (event.httpMethod !== "POST") {
+      return {
+        statusCode: 405,
+        body: JSON.stringify({ reply: "Method Not Allowed" })
+      };
+    }
 
-.card{
-  margin-top:20px;
-  padding:20px;
-  background:rgba(255,255,255,0.06);
-  border-radius:20px;
-  backdrop-filter:blur(10px);
-}
+    if (!process.env.OPENAI_API_KEY) {
+      return {
+        statusCode: 200,
+        body: JSON.stringify({
+          reply: "AI not configured."
+        })
+      };
+    }
 
-button,input,select{
-  width:100%;
-  padding:12px;
-  margin-top:10px;
-  border:none;
-  border-radius:10px;
-  font-size:15px;
-}
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY
+    });
 
-button{
-  background:#ff2e63;
-  color:white;
-  font-weight:bold;
-}
+    const body = JSON.parse(event.body || "{}");
 
-#aiResponse{
-  margin-top:15px;
-  background:rgba(0,0,0,0.3);
-  padding:15px;
-  border-radius:15px;
-  font-size:14px;
-}
-</style>
-</head>
+    const userId = body.name || "anonymous";
 
-<body>
+    // Create memory for user if not exists
+    if (!globalThis.userMemory[userId]) {
+      globalThis.userMemory[userId] = {
+        tasks: [],
+        conversations: []
+      };
+    }
 
-<div class="container">
+    const memory = globalThis.userMemory[userId];
 
-<h2 style="text-align:center;">🔥 100 Day AI Coach</h2>
+    let systemPrompt = "";
+    let userPrompt = "";
 
-<!-- SETUP -->
-<div id="setup" class="card">
-<input id="nameInput" placeholder="Your Name">
-<input id="ageInput" type="number" placeholder="Your Age">
+    /* =========================
+       DAILY TASK WITH MEMORY
+    ========================== */
 
-<select id="goalInput">
-<option value="weight loss">Weight Loss</option>
-<option value="muscle gain">Muscle Gain</option>
-<option value="healthy lifestyle">Healthy Lifestyle</option>
-<option value="productivity">Productivity</option>
-</select>
+    if (body.type === "daily") {
 
-<select id="personalityInput">
-<option value="hardcore">Hardcore 🔥</option>
-<option value="balanced">Balanced ⚖️</option>
-<option value="chill">Chill 🌿</option>
-</select>
+      const previousTasks = memory.tasks.slice(-3).join("\n");
 
-<button onclick="startApp()">Start Challenge</button>
-</div>
+      systemPrompt = `
+You are an elite 100-day transformation coach.
 
-<!-- APP -->
-<div id="app" style="display:none;">
+Rules:
+- Give ONLY 1 main task.
+- Max 25 words.
+- Increase difficulty gradually.
+- If day divisible by 7 → Weekly Boss Challenge.
+- Avoid repeating previous tasks.
+- Tone must match personality.
+`;
 
-<div class="topbar">
-  <div id="streakBox">🔥 0</div>
-  <div id="xpBox">⭐ 0 XP</div>
-</div>
+      userPrompt = `
+User Goal: ${body.goal}
+Personality: ${body.personality}
+Day: ${body.day}
 
-<div class="centerInfo">
-  <div id="welcomeText">Welcome</div>
-  <div id="dayLevelText">Day 1 • Level 1</div>
-</div>
+Recent Tasks:
+${previousTasks}
+`;
 
-<div class="card">
-  <h3>🎯 Daily Task</h3>
-  <div id="dailyTask">Loading...</div>
+    }
 
-  <button onclick="completeDay()">Complete Day</button>
-  <button onclick="askAI()">Ask AI Coach</button>
+    /* =========================
+       ASSISTANT WITH MEMORY
+    ========================== */
 
-  <div id="aiResponse"></div>
-</div>
+    if (body.type === "assistant") {
 
-</div>
-</div>
+      const recentConversation = memory.conversations
+        .slice(-4)
+        .map(c => `${c.role}: ${c.content}`)
+        .join("\n");
 
-<script>
+      systemPrompt = `
+You are an intelligent elite AI coach.
 
-function getData(){
-  let data=JSON.parse(localStorage.getItem("coachApp"));
-  if(!data){
-    data={
-      name:"",
-      age:"",
-      goal:"",
-      personality:"",
-      day:1,
-      streak:0,
-      xp:0,
-      level:1,
-      lastComplete:0
+Rules:
+- Be structured and actionable.
+- Under 120 words.
+- Adapt tone to personality.
+- Use previous conversation context if relevant.
+`;
+
+      userPrompt = `
+User Goal: ${body.goal}
+Personality: ${body.personality}
+
+Recent Conversation:
+${recentConversation}
+
+New Question:
+${body.question}
+`;
+
+    }
+
+    if (!systemPrompt) {
+      return {
+        statusCode: 200,
+        body: JSON.stringify({ reply: "Invalid request type." })
+      };
+    }
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 200
+    });
+
+    const reply =
+      completion.choices?.[0]?.message?.content?.trim() ||
+      "Stay consistent. 🔥";
+
+    /* =========================
+       SAVE MEMORY
+    ========================== */
+
+    if (body.type === "daily") {
+      memory.tasks.push(reply);
+
+      // Keep only last 10 tasks
+      if (memory.tasks.length > 10) {
+        memory.tasks.shift();
+      }
+    }
+
+    if (body.type === "assistant") {
+      memory.conversations.push(
+        { role: "user", content: body.question },
+        { role: "assistant", content: reply }
+      );
+
+      // Keep only last 10 messages
+      if (memory.conversations.length > 10) {
+        memory.conversations = memory.conversations.slice(-10);
+      }
+    }
+
+    return {
+      statusCode: 200,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reply })
+    };
+
+  } catch (error) {
+
+    console.error("AI ERROR:", error);
+
+    return {
+      statusCode: 200,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        reply: "Temporary AI issue. Stay disciplined. 🔥"
+      })
     };
   }
-  return data;
 }
-
-function saveData(data){
-  localStorage.setItem("coachApp",JSON.stringify(data));
-}
-
-function startApp(){
-  let data=getData();
-
-  data.name=nameInput.value || "";
-  data.age=ageInput.value || "";
-  data.goal=goalInput.value || "";
-  data.personality=personalityInput.value || "";
-
-  saveData(data);
-
-  setup.style.display="none";
-  app.style.display="block";
-
-  loadApp();
-  generateDailyTask();
-}
-
-function loadApp(){
-  let data=getData();
-
-  welcomeText.innerText="Welcome";
-  dayLevelText.innerText=`Day ${data.day} • Level ${data.level}`;
-  streakBox.innerText=`🔥 ${data.streak}`;
-  xpBox.innerText=`⭐ ${data.xp} XP`;
-}
-
-async function generateDailyTask(){
-  let data=getData();
-
-  const res=await fetch("/.netlify/functions/ai",{
-    method:"POST",
-    body:JSON.stringify({
-      type:"daily",
-      goal:data.goal,
-      personality:data.personality,
-      day:data.day
-    })
-  });
-
-  const result=await res.json();
-  dailyTask.innerText=result.reply;
-}
-
-function completeDay(){
-  let data=getData();
-  const now=Date.now();
-  const diff=now-data.lastComplete;
-
-  if(diff<86400000){
-    alert("Come back tomorrow 🔥");
-    return;
-  }
-
-  if(diff>172800000) data.streak=0;
-
-  data.day++;
-  data.streak++;
-  data.xp+=50;
-
-  if(data.xp>=data.level*200){
-    data.level++;
-  }
-
-  data.lastComplete=now;
-
-  saveData(data);
-  loadApp();
-  generateDailyTask();
-}
-
-async function askAI(){
-  let question=prompt("Ask your AI coach:");
-
-  if(!question) return;
-
-  let data=getData();
-
-  const res=await fetch("/.netlify/functions/ai",{
-    method:"POST",
-    body:JSON.stringify({
-      type:"assistant",
-      question:question,
-      goal:data.goal,
-      personality:data.personality
-    })
-  });
-
-  const result=await res.json();
-  aiResponse.innerText=result.reply;
-}
-
-if(localStorage.getItem("coachApp")){
-  setup.style.display="none";
-  app.style.display="block";
-  loadApp();
-  generateDailyTask();
-}
-
-</script>
-</body>
-</html>
