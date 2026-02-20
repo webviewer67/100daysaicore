@@ -3,82 +3,98 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>100 Day AI Coach</title>
+<title>🔥 100 Day AI</title>
 
 <style>
 body{
   margin:0;
   font-family:'Poppins',sans-serif;
-  background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);
+  background:linear-gradient(135deg,#141e30,#243b55);
   color:white;
 }
-
 .container{
-  max-width:500px;
+  max-width:520px;
   margin:auto;
-  padding:20px;
+  padding:15px;
+  position:relative;
 }
-
-.topbar{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  background:rgba(255,255,255,0.08);
-  padding:10px 15px;
-  border-radius:15px;
-  font-weight:bold;
+.calendar{
+  position:absolute;
+  right:15px;
+  top:10px;
+  font-size:22px;
+  cursor:pointer;
 }
-
-.centerInfo{
-  text-align:center;
-  margin-top:10px;
-}
-
 .card{
-  margin-top:20px;
-  padding:20px;
-  background:rgba(255,255,255,0.06);
-  border-radius:20px;
+  background:rgba(255,255,255,0.08);
   backdrop-filter:blur(10px);
+  padding:20px;
+  border-radius:20px;
+  margin-top:15px;
 }
-
-button,input,select{
+button{
   width:100%;
   padding:12px;
   margin-top:10px;
+  border-radius:12px;
   border:none;
-  border-radius:10px;
-  font-size:15px;
-}
-
-button{
-  background:#ff2e63;
+  background:#ff416c;
   color:white;
   font-weight:bold;
+  cursor:pointer;
 }
-
-#aiResponse{
-  margin-top:15px;
-  background:rgba(0,0,0,0.3);
-  padding:15px;
-  border-radius:15px;
-  font-size:14px;
+progress{
+  width:100%;
+  height:15px;
+  margin-top:10px;
+}
+#xpBar{
+  height:12px;
+  background:#333;
+  border-radius:10px;
+  overflow:hidden;
+  margin-top:10px;
+}
+#xpFill{
+  height:100%;
+  width:0%;
+  background:linear-gradient(90deg,#00f260,#0575e6);
+  transition:width 0.6s ease;
+}
+.badge{
+  display:inline-block;
+  background:#ffcc00;
+  color:black;
+  padding:5px 10px;
+  border-radius:20px;
+  font-size:12px;
+  margin:5px 5px 0 0;
+}
+.notification{
+  position:fixed;
+  right:10px;
+  top:50%;
+  background:#00c853;
+  padding:12px;
+  border-radius:10px;
+  display:none;
 }
 </style>
 </head>
 
 <body>
-
 <div class="container">
 
-<h2 style="text-align:center;">🔥 100 Day AI Coach</h2>
+<div class="calendar" onclick="showHistory()">📅</div>
 
-<!-- SETUP -->
+<h2 id="welcome">Welcome</h2>
+
 <div id="setup" class="card">
 <input id="nameInput" placeholder="Your Name">
 <input id="ageInput" type="number" placeholder="Your Age">
 
 <select id="goalInput">
+<option value="">Select Goal</option>
 <option value="weight loss">Weight Loss</option>
 <option value="muscle gain">Muscle Gain</option>
 <option value="healthy lifestyle">Healthy Lifestyle</option>
@@ -94,152 +110,169 @@ button{
 <button onclick="startApp()">Start Challenge</button>
 </div>
 
-<!-- APP -->
 <div id="app" style="display:none;">
 
-<div class="topbar">
-  <div id="streakBox">🔥 0</div>
-  <div id="xpBox">⭐ 0 XP</div>
-</div>
-
-<div class="centerInfo">
-  <div id="welcomeText">Welcome</div>
-  <div id="dayLevelText">Day 1 • Level 1</div>
-</div>
-
 <div class="card">
-  <h3>🎯 Daily Task</h3>
-  <div id="dailyTask">Loading...</div>
+<h3 id="day">Day 1 / 100</h3>
+<progress id="progressBar" max="100" value="1"></progress>
 
-  <button onclick="completeDay()">Complete Day</button>
-  <button onclick="askAI()">Ask AI Coach</button>
+<h4>Level <span id="levelText">1</span></h4>
+<div id="xpBar"><div id="xpFill"></div></div>
 
-  <div id="aiResponse"></div>
+<h3>🎯 Daily Task</h3>
+<p id="dailyTask"></p>
+<div id="extraTasks"></div>
+
+<button onclick="completeDay()">Complete Day ✅</button>
+<button onclick="askAI()">Ask AI Coach 🤖</button>
+
+<div id="aiResponse"></div>
+
+<h3>🏅 Achievements</h3>
+<div id="achievements"></div>
+
+</div>
 </div>
 
-</div>
-</div>
+<div id="notify" class="notification"></div>
 
 <script>
 
+const setup = document.getElementById("setup");
+const app = document.getElementById("app");
+const welcome = document.getElementById("welcome");
+const dayEl = document.getElementById("day");
+const progressBar = document.getElementById("progressBar");
+const dailyTask = document.getElementById("dailyTask");
+const extraTasks = document.getElementById("extraTasks");
+const achievementsEl = document.getElementById("achievements");
+const levelText = document.getElementById("levelText");
+const xpFill = document.getElementById("xpFill");
+const notify = document.getElementById("notify");
+const aiResponse = document.getElementById("aiResponse");
+
 function getData(){
-  let data=JSON.parse(localStorage.getItem("coachApp"));
-  if(!data){
-    data={
-      name:"",
-      age:"",
-      goal:"",
-      personality:"",
-      day:1,
-      streak:0,
-      xp:0,
-      level:1,
-      lastComplete:0
-    };
-  }
-  return data;
+  return JSON.parse(localStorage.getItem("aiTransform")) || {
+    name:"",age:"",goal:"",personality:"",
+    day:1,xp:0,level:1,achievements:[],history:[]
+  };
 }
 
-function saveData(data){
-  localStorage.setItem("coachApp",JSON.stringify(data));
+function saveData(d){
+  localStorage.setItem("aiTransform",JSON.stringify(d));
 }
 
 function startApp(){
-  let data=getData();
-
-  data.name=nameInput.value || "";
-  data.age=ageInput.value || "";
-  data.goal=goalInput.value || "";
-  data.personality=personalityInput.value || "";
-
-  saveData(data);
+  let d=getData();
+  d.name=nameInput.value;
+  d.age=ageInput.value;
+  d.goal=goalInput.value;
+  d.personality=personalityInput.value;
+  saveData(d);
 
   setup.style.display="none";
   app.style.display="block";
 
   loadApp();
-  generateDailyTask();
+  generateTasks();
 }
 
 function loadApp(){
-  let data=getData();
+  let d=getData();
+  welcome.innerText="Welcome "+d.name;
+  dayEl.innerText="Day "+d.day+" / 100";
+  progressBar.value=d.day;
 
-  welcomeText.innerText="Welcome";
-  dayLevelText.innerText=`Day ${data.day} • Level ${data.level}`;
-  streakBox.innerText=`🔥 ${data.streak}`;
-  xpBox.innerText=`⭐ ${data.xp} XP`;
+  levelText.innerText=d.level;
+
+  let percent=(d.xp/(d.level*200))*100;
+  if(percent>100) percent=100;
+  xpFill.style.width=percent+"%";
+
+  renderAchievements();
 }
 
-async function generateDailyTask(){
-  let data=getData();
+function generateTasks(){
+  let d=getData();
+  let main="Stay consistent today 🔥";
+  let extras="• Improve 1%<br>• Stay disciplined";
 
-  const res=await fetch("/.netlify/functions/ai",{
-    method:"POST",
-    body:JSON.stringify({
-      type:"daily",
-      goal:data.goal,
-      personality:data.personality,
-      day:data.day
-    })
-  });
+  if(d.goal==="muscle gain"){
+    main="Train hard for 45 mins 💪";
+    extras="• Eat protein<br>• Stretch";
+  }
+  if(d.goal==="weight loss"){
+    main="30 min cardio 🔥";
+    extras="• No junk<br>• Drink water";
+  }
+  if(d.goal==="productivity"){
+    main="2 hour deep focus 📚";
+    extras="• No social media<br>• Plan tomorrow";
+  }
 
-  const result=await res.json();
-  dailyTask.innerText=result.reply;
+  dailyTask.innerText=main;
+  extraTasks.innerHTML="<h4>📋 Extra Tasks</h4>"+extras;
 }
 
 function completeDay(){
-  let data=getData();
-  const now=Date.now();
-  const diff=now-data.lastComplete;
+  let d=getData();
+  d.day++;
+  d.xp+=50;
+  d.history.push("Day "+d.day+" done");
 
-  if(diff<86400000){
-    alert("Come back tomorrow 🔥");
-    return;
+  if(d.xp>=d.level*200){
+    d.level++;
+    d.xp=0;
+    showNotify("LEVEL UP! 🚀");
   }
 
-  if(diff>172800000) data.streak=0;
-
-  data.day++;
-  data.streak++;
-  data.xp+=50;
-
-  if(data.xp>=data.level*200){
-    data.level++;
-  }
-
-  data.lastComplete=now;
-
-  saveData(data);
+  unlockAchievements(d);
+  saveData(d);
   loadApp();
-  generateDailyTask();
+  showNotify("Great job! Keep going 🔥");
 }
 
-async function askAI(){
-  let question=prompt("Ask your AI coach:");
+function unlockAchievements(d){
+  if(d.day===7 && !d.achievements.includes("7 Day Warrior"))
+    d.achievements.push("7 Day Warrior");
+  if(d.day===30 && !d.achievements.includes("30 Day Beast"))
+    d.achievements.push("30 Day Beast");
+  if(d.day===100 && !d.achievements.includes("100 Day Legend"))
+    d.achievements.push("100 Day Legend");
+}
 
-  if(!question) return;
-
-  let data=getData();
-
-  const res=await fetch("/.netlify/functions/ai",{
-    method:"POST",
-    body:JSON.stringify({
-      type:"assistant",
-      question:question,
-      goal:data.goal,
-      personality:data.personality
-    })
+function renderAchievements(){
+  achievementsEl.innerHTML="";
+  let d=getData();
+  d.achievements.forEach(a=>{
+    achievementsEl.innerHTML+=`<span class="badge">${a}</span>`;
   });
-
-  const result=await res.json();
-  aiResponse.innerText=result.reply;
 }
 
-if(localStorage.getItem("coachApp")){
+function askAI(){
+  let q=prompt("Ask your AI Coach:");
+  if(!q) return;
+  let d=getData();
+  aiResponse.innerText=
+  "As your "+d.personality+" coach: Stay focused on "+d.goal+" and don't quit 🔥";
+}
+
+function showNotify(msg){
+  notify.innerText=msg;
+  notify.style.display="block";
+  setTimeout(()=>{ notify.style.display="none"; },2500);
+}
+
+function showHistory(){
+  let d=getData();
+  alert(d.history.join("\n"));
+}
+
+if(localStorage.getItem("aiTransform")){
   setup.style.display="none";
   app.style.display="block";
   loadApp();
-  generateDailyTask();
+  generateTasks();
 }
 
 </script>
