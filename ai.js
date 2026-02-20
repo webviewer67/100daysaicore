@@ -1,287 +1,176 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🔥 100 Day AI Coach Pro Max Ultra</title>
-<link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">
-<style>
-body{
-  margin:0;
-  font-family:'Poppins',sans-serif;
-  background:linear-gradient(135deg,#141e30,#243b55);
-  color:white;
-}
-.container{
-  max-width:520px;
-  margin:auto;
-  padding:15px;
-  position:relative;
-}
-.calendar{
-  position:absolute;
-  right:15px;
-  top:10px;
-  font-size:24px;
-  cursor:pointer;
-}
-.card{
-  background:rgba(255,255,255,0.08);
-  backdrop-filter:blur(10px);
-  padding:20px;
-  border-radius:20px;
-  margin-top:15px;
-}
-button,input,select{
-  width:100%;
-  padding:12px;
-  margin-top:10px;
-  border-radius:12px;
-  border:none;
-  font-size:15px;
-  font-weight:bold;
-  cursor:pointer;
-}
-button{
-  background:#ff416c;
-  color:white;
-}
-button:hover{
-  opacity:0.9;
-}
-progress{
-  width:100%;
-  height:15px;
-  margin-top:10px;
-}
-#xpBar{
-  height:12px;
-  background:#333;
-  border-radius:10px;
-  overflow:hidden;
-  margin-top:10px;
-}
-#xpFill{
-  height:100%;
-  width:0%;
-  background:linear-gradient(90deg,#00f260,#0575e6);
-  transition:width 0.6s ease;
-}
-.badge{
-  display:inline-block;
-  background:#ffcc00;
-  color:black;
-  padding:5px 10px;
-  border-radius:20px;
-  font-size:12px;
-  margin:5px 5px 0 0;
-}
-.notification{
-  position:fixed;
-  right:10px;
-  top:50%;
-  background:#00c853;
-  padding:12px;
-  border-radius:10px;
-  display:none;
-}
-#leaderboard{
-  margin-top:15px;
-  background:rgba(255,255,255,0.05);
-  padding:10px;
-  border-radius:12px;
-}
-</style>
-</head>
-<body>
+import OpenAI from "openai";
 
-<div class="container">
+// ===============================
+// In-memory storage
+// ===============================
+if (!globalThis.eliteMemory) globalThis.eliteMemory = {};
+if (!globalThis.leaderboard) globalThis.leaderboard = [];
 
-<div class="calendar" onclick="showHistory()">📅</div>
+export async function handler(event) {
+  try {
+    // Only allow POST
+    if (event.httpMethod !== "POST") return { statusCode: 405, body: JSON.stringify({ reply: "Method Not Allowed" }) };
+    if (!process.env.OPENAI_API_KEY) return { statusCode: 200, body: JSON.stringify({ reply: "AI not configured." }) };
 
-<h2 id="welcome">Welcome</h2>
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const body = JSON.parse(event.body || "{}");
+    const userId = body.name || "anonymous";
 
-<!-- SETUP -->
-<div id="setup" class="card">
-<input id="nameInput" placeholder="Your Name">
-<input id="ageInput" type="number" placeholder="Your Age">
+    // Initialize memory
+    if (!globalThis.eliteMemory[userId]) {
+      globalThis.eliteMemory[userId] = {
+        tasks: [],
+        conversations: [],
+        achievements: [],
+        streak: 0,
+        lastDay: 0,
+        xp: 0,
+        level: 1,
+        weeklyBossPoints: 0
+      };
+    }
+    const memory = globalThis.eliteMemory[userId];
 
-<select id="goalInput">
-<option value="">Select Goal</option>
-<option value="weight loss">Weight Loss</option>
-<option value="muscle gain">Muscle Gain</option>
-<option value="healthy lifestyle">Healthy Lifestyle</option>
-<option value="productivity">Productivity</option>
-</select>
+    let systemPrompt = "", userPrompt = "";
 
-<select id="personalityInput">
-<option value="hardcore">Hardcore 🔥</option>
-<option value="balanced">Balanced ⚖️</option>
-<option value="chill">Chill 🌿</option>
-</select>
+    // ===============================
+    // Daily Task Generation
+    // ===============================
+    if (body.type === "daily") {
+      const prevTasks = memory.tasks.slice(-5).join("\n");
+      systemPrompt = `
+You are the ELITE 100-Day AI Coach (PRO MAX ULTRA).
 
-<button onclick="startApp()">Start Challenge</button>
-</div>
+Rules:
+- Generate 1 main task (max 25 words)
+- Include motivation & personality tone
+- Gradually increase difficulty
+- Weekly Boss Challenge if day divisible by 7
+- Avoid repeating recent tasks
+- Suggest 1-3 optional mini extra tasks
+- Clear, actionable, concise
+`;
+      userPrompt = `
+User Goal: ${body.goal}
+Personality: ${body.personality}
+Day: ${body.day}
 
-<!-- APP -->
-<div id="app" style="display:none;">
+Recent Tasks:
+${prevTasks}
+`;
+    }
 
-<div class="card">
-<h3 id="day">Day 1 / 100</h3>
-<progress id="progressBar" max="100" value="1"></progress>
+    // ===============================
+    // AI Coach / Assistant
+    // ===============================
+    if (body.type === "assistant") {
+      const recentConversation = memory.conversations.slice(-12).map(c => `${c.role}: ${c.content}`).join("\n");
+      systemPrompt = `
+You are the ELITE AI Coach.
 
-<h4>Level <span id="levelText">1</span></h4>
-<div id="xpBar"><div id="xpFill"></div></div>
+Rules:
+- Keep responses under 120 words
+- Structured, actionable, motivational
+- Use previous conversation context
+- Tailor advice to user's goal & personality
+- Include tips, streak motivation, or habit guidance
+`;
+      userPrompt = `
+User Goal: ${body.goal}
+Personality: ${body.personality}
 
-<h3>🎯 Daily Task</h3>
-<p id="dailyTask">Loading...</p>
-<div id="extraTasks"></div>
+Recent Conversation:
+${recentConversation}
 
-<button onclick="completeDay()">Complete Day ✅</button>
-<button onclick="askAI()">Ask AI Coach 🤖</button>
+New Question:
+${body.question}
+`;
+    }
 
-<div id="aiResponse"></div>
+    if (!systemPrompt) return { statusCode: 200, body: JSON.stringify({ reply: "Invalid request type." }) };
 
-<h3>🏅 Achievements</h3>
-<div id="achievements"></div>
-
-<h3>🌟 Leaderboard</h3>
-<div id="leaderboard"></div>
-
-</div>
-</div>
-
-<div id="notify" class="notification"></div>
-
-<script>
-const setup=document.getElementById("setup");
-const app=document.getElementById("app");
-const welcome=document.getElementById("welcome");
-const dayEl=document.getElementById("day");
-const progressBar=document.getElementById("progressBar");
-const dailyTask=document.getElementById("dailyTask");
-const extraTasks=document.getElementById("extraTasks");
-const achievementsEl=document.getElementById("achievements");
-const levelText=document.getElementById("levelText");
-const xpFill=document.getElementById("xpFill");
-const notify=document.getElementById("notify");
-const aiResponse=document.getElementById("aiResponse");
-const leaderboardEl=document.getElementById("leaderboard");
-
-let userData=JSON.parse(localStorage.getItem("eliteAIData"))||{};
-
-function saveLocal(){ localStorage.setItem("eliteAIData",JSON.stringify(userData)); }
-
-function showNotify(msg){ notify.innerText=msg; notify.style.display="block"; setTimeout(()=>{notify.style.display="none";},2500); }
-
-function startApp(){
-  userData.name=nameInput.value.trim();
-  userData.age=ageInput.value.trim();
-  userData.goal=goalInput.value;
-  userData.personality=personalityInput.value;
-  userData.day=userData.day||1;
-  userData.streak=userData.streak||0;
-  userData.level=userData.level||1;
-  userData.xp=userData.xp||0;
-  userData.achievements=userData.achievements||[];
-  userData.weeklyBossPoints=userData.weeklyBossPoints||0;
-
-  saveLocal();
-  setup.style.display="none";
-  app.style.display="block";
-  loadApp();
-  generateDailyTask();
-}
-
-function loadApp(){
-  welcome.innerText="Welcome "+userData.name;
-  dayEl.innerText="Day "+userData.day+" / 100";
-  progressBar.value=userData.day;
-  levelText.innerText=userData.level;
-  xpFill.style.width=Math.min(100,(userData.xp/(userData.level*200)*100))+"%";
-  renderAchievements();
-  renderLeaderboard();
-}
-
-async function generateDailyTask(){
-  aiResponse.innerText="Generating task...";
-  try{
-    const res=await fetch("/.netlify/functions/ai",{
-      method:"POST",
-      body:JSON.stringify({type:"daily",name:userData.name,goal:userData.goal,personality:userData.personality,day:userData.day})
+    // ===============================
+    // Call OpenAI
+    // ===============================
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 200
     });
-    const result=await res.json();
-    dailyTask.innerText=result.reply;
 
-    extraTasks.innerHTML="<h4>📋 Extra Tasks</h4>• Stay consistent<br>• Small improvements";
+    const reply = completion.choices?.[0]?.message?.content?.trim() || "Stay consistent. 🔥";
 
-    if(result.events.includes("LEVEL_UP")) showNotify("🎉 LEVEL UP!");
-    if(result.events.includes("BOSS_UNLOCK")) showNotify("🔥 Weekly Boss Unlocked!");
-    if(result.events.includes("ACHIEVEMENT_UNLOCK")) showNotify("🏅 Achievement Unlocked!");
-    
-    userData.achievements=result.achievements;
-    userData.streak=result.streak;
-    userData.level=result.level;
-    userData.xp=result.xp;
-    userData.weeklyBossPoints=result.weeklyBossPoints;
+    // ===============================
+    // Memory & Achievements
+    // ===============================
+    const events = []; // triggers for frontend
 
-    saveLocal();
-    loadApp();
-  }catch(err){ aiResponse.innerText="AI error. Try again.";}
-}
+    if (body.type === "daily") {
+      // Track tasks & streak
+      const dayGap = body.day - memory.lastDay;
+      memory.streak = (dayGap === 1) ? memory.streak + 1 : 1;
+      memory.lastDay = body.day;
+      memory.tasks.push(reply);
+      memory.xp += 50;
 
-async function completeDay(){
-  const now=Date.now();
-  if(userData.lastComplete && now-userData.lastComplete<86400000){
-    alert("Come back tomorrow 🔥"); return;
+      // Level up
+      if (memory.xp >= memory.level * 200) { memory.level++; memory.xp = 0; events.push("LEVEL_UP"); }
+
+      // Weekly Boss Challenge
+      if (body.day % 7 === 0) {
+        memory.achievements.push(`Week ${body.day / 7} Boss`);
+        memory.weeklyBossPoints += 100;
+        events.push("BOSS_UNLOCK");
+      }
+
+      // Milestone Achievements
+      const milestones = {7:"7 Day Warrior",30:"30 Day Beast",100:"100 Day Legend"};
+      if (milestones[body.day] && !memory.achievements.includes(milestones[body.day])) {
+        memory.achievements.push(milestones[body.day]);
+        events.push("ACHIEVEMENT_UNLOCK");
+      }
+
+      if (memory.tasks.length > 10) memory.tasks.shift();
+
+      // Update leaderboard
+      const score = memory.streak * 10 + memory.xp;
+      const existing = globalThis.leaderboard.find(u => u.id === userId);
+      if (existing) existing.score = score;
+      else globalThis.leaderboard.push({id:userId, score});
+      globalThis.leaderboard.sort((a,b)=>b.score - a.score);
+
+    } else if (body.type === "assistant") {
+      memory.conversations.push(
+        { role:"user", content: body.question },
+        { role:"assistant", content: reply }
+      );
+      if (memory.conversations.length>12) memory.conversations = memory.conversations.slice(-12);
+    }
+
+    // ===============================
+    // Response
+    // ===============================
+    return {
+      statusCode:200,
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        reply,
+        achievements: memory.achievements,
+        streak: memory.streak,
+        level: memory.level,
+        xp: memory.xp,
+        weeklyBossPoints: memory.weeklyBossPoints,
+        events,
+        leaderboard: globalThis.leaderboard.map(u=>({id:u.id, score:u.score}))
+      })
+    };
+
+  } catch (error) {
+    console.error("AI ERROR:", error);
+    return { statusCode:200, headers:{"Content-Type":"application/json"}, body: JSON.stringify({ reply:"Temporary AI issue. Stay disciplined. 🔥" }) };
   }
-  userData.day++;
-  userData.lastComplete=now;
-  saveLocal();
-  await generateDailyTask();
 }
-
-async function askAI(){
-  const question=prompt("Ask your AI Coach:");
-  if(!question) return;
-  aiResponse.innerText="Thinking...";
-  try{
-    const res=await fetch("/.netlify/functions/ai",{
-      method:"POST",
-      body:JSON.stringify({type:"assistant",name:userData.name,goal:userData.goal,personality:userData.personality,question:question})
-    });
-    const result=await res.json();
-    aiResponse.innerText=result.reply;
-
-    userData.achievements=result.achievements;
-    userData.streak=result.streak;
-    userData.level=result.level;
-    userData.xp=result.xp;
-    userData.weeklyBossPoints=result.weeklyBossPoints;
-
-    saveLocal();
-    loadApp();
-  }catch(err){ aiResponse.innerText="AI error. Try again.";}
-}
-
-function renderAchievements(){
-  achievementsEl.innerHTML="";
-  if(userData.achievements){
-    userData.achievements.forEach(a=>{ achievementsEl.innerHTML+=`<span class="badge">${a}</span>`; });
-  }
-}
-
-function renderLeaderboard(){
-  leaderboardEl.innerHTML="";
-  if(userData.leaderboard){
-    userData.leaderboard.forEach((u,i)=>leaderboardEl.innerHTML+=`${i+1}. ${u.id} - ${u.score}<br>`);
-  }
-}
-
-function showHistory(){ alert(userData.tasks ? userData.tasks.join("\n") : "No history yet."); }
-
-if(localStorage.getItem("eliteAIData")){ setup.style.display="none"; app.style.display="block"; loadApp(); generateDailyTask(); }
-</script>
-
-</body>
-</html>
