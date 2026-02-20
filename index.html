@@ -3,57 +3,68 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🔥 100 Day AI</title>
-
+<title>🔥 100 Day AI PRO MAX ULTRA - Gen Z Edition</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 body{
   margin:0;
   font-family:'Poppins',sans-serif;
-  background:linear-gradient(135deg,#141e30,#243b55);
+  background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
   color:white;
 }
 .container{
   max-width:520px;
   margin:auto;
-  padding:15px;
+  padding:20px;
   position:relative;
 }
+h2,h3,h4{margin:8px 0;}
 .calendar{
   position:absolute;
-  right:15px;
-  top:10px;
-  font-size:22px;
+  right:20px;
+  top:20px;
+  font-size:26px;
   cursor:pointer;
+  transition: transform 0.3s;
 }
+.calendar:hover{transform:scale(1.2);}
 .card{
   background:rgba(255,255,255,0.08);
-  backdrop-filter:blur(10px);
   padding:20px;
   border-radius:20px;
-  margin-top:15px;
+  margin-top:20px;
+  backdrop-filter:blur(12px);
+  box-shadow: 0 0 15px rgba(0,0,0,0.3);
+  transition: transform 0.3s;
 }
-button{
+.card:hover{transform:translateY(-3px);}
+button,input,select,textarea{
   width:100%;
   padding:12px;
   margin-top:10px;
   border-radius:12px;
   border:none;
+  font-size:15px;
+  outline:none;
+}
+button{
   background:#ff416c;
   color:white;
   font-weight:bold;
   cursor:pointer;
+  transition:all 0.2s;
 }
-progress{
-  width:100%;
-  height:15px;
-  margin-top:10px;
+button:hover{
+  transform:scale(1.02);
+  opacity:0.95;
 }
 #xpBar{
-  height:12px;
-  background:#333;
+  height:14px;
+  background:#222;
   border-radius:10px;
   overflow:hidden;
   margin-top:10px;
+  box-shadow: 0 0 6px #00f260 inset, 0 0 6px #0575e6 inset;
 }
 #xpFill{
   height:100%;
@@ -65,34 +76,62 @@ progress{
   display:inline-block;
   background:#ffcc00;
   color:black;
-  padding:5px 10px;
+  padding:6px 12px;
   border-radius:20px;
   font-size:12px;
   margin:5px 5px 0 0;
+  box-shadow:0 0 4px #ffcc00;
+  transition: transform 0.2s;
 }
+.badge:hover{transform:scale(1.1);}
 .notification{
   position:fixed;
   right:10px;
-  top:50%;
+  top:40%;
   background:#00c853;
-  padding:12px;
-  border-radius:10px;
+  padding:14px;
+  border-radius:12px;
   display:none;
+  font-weight:bold;
+  z-index:999;
+  box-shadow:0 0 10px #00c853;
+}
+.taskItem{
+  margin:8px 0;
+  display:flex;
+  align-items:center;
+}
+.taskItem input{margin-right:10px; transform:scale(1.2);}
+.aiBox{
+  margin-top:10px;
+  display:flex;
+  gap:5px;
+}
+.aiInput{flex:1; padding:10px; border-radius:10px;}
+.aiButton{width:80px; background:#00f260; color:#000; font-weight:bold; transition:all 0.2s;}
+.aiButton:hover{transform:scale(1.05);}
+#aiResponse{
+  margin-top:10px;
+  background:rgba(0,0,0,0.3);
+  padding:12px;
+  border-radius:12px;
+  min-height:50px;
+  font-style:italic;
 }
 </style>
 </head>
-
 <body>
+
 <div class="container">
 
 <div class="calendar" onclick="showHistory()">📅</div>
 
-<h2 id="welcome">Welcome</h2>
+<h2>🔥 100 Day AI PRO MAX ULTRA - Gen Z Edition</h2>
 
+<!-- Setup -->
 <div id="setup" class="card">
 <input id="nameInput" placeholder="Your Name">
 <input id="ageInput" type="number" placeholder="Your Age">
-
 <select id="goalInput">
 <option value="">Select Goal</option>
 <option value="weight loss">Weight Loss</option>
@@ -100,181 +139,192 @@ progress{
 <option value="healthy lifestyle">Healthy Lifestyle</option>
 <option value="productivity">Productivity</option>
 </select>
-
 <select id="personalityInput">
 <option value="hardcore">Hardcore 🔥</option>
 <option value="balanced">Balanced ⚖️</option>
 <option value="chill">Chill 🌿</option>
 </select>
-
 <button onclick="startApp()">Start Challenge</button>
 </div>
 
+<!-- App -->
 <div id="app" style="display:none;">
-
 <div class="card">
-<h3 id="day">Day 1 / 100</h3>
-<progress id="progressBar" max="100" value="1"></progress>
-
-<h4>Level <span id="levelText">1</span></h4>
+<h3 id="dayText"></h3>
+<div>🔥 Streak: <span id="streakText"></span></div>
+<div>⭐ XP: <span id="xpText"></span></div>
 <div id="xpBar"><div id="xpFill"></div></div>
 
 <h3>🎯 Daily Task</h3>
-<p id="dailyTask"></p>
+<p id="dailyTask">Loading...</p>
+
+<h4>📋 Extra Tasks</h4>
 <div id="extraTasks"></div>
 
 <button onclick="completeDay()">Complete Day ✅</button>
-<button onclick="askAI()">Ask AI Coach 🤖</button>
 
+<h4>🤖 Ask AI Coach</h4>
+<div class="aiBox">
+<input id="aiInput" class="aiInput" placeholder="Type your question...">
+<button class="aiButton" onclick="askAI()">Ask</button>
+</div>
 <div id="aiResponse"></div>
 
 <h3>🏅 Achievements</h3>
 <div id="achievements"></div>
-
 </div>
 </div>
 
 <div id="notify" class="notification"></div>
 
-<script>
+<audio id="levelSound" src="https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3"></audio>
+<audio id="completeSound" src="https://assets.mixkit.co/sfx/preview/mixkit-positive-interface-beep-221.mp3"></audio>
 
-const setup = document.getElementById("setup");
-const app = document.getElementById("app");
-const welcome = document.getElementById("welcome");
-const dayEl = document.getElementById("day");
-const progressBar = document.getElementById("progressBar");
+<script>
+const dayText = document.getElementById("dayText");
+const streakText = document.getElementById("streakText");
+const xpText = document.getElementById("xpText");
+const xpFill = document.getElementById("xpFill");
 const dailyTask = document.getElementById("dailyTask");
 const extraTasks = document.getElementById("extraTasks");
-const achievementsEl = document.getElementById("achievements");
-const levelText = document.getElementById("levelText");
-const xpFill = document.getElementById("xpFill");
-const notify = document.getElementById("notify");
+const achievements = document.getElementById("achievements");
 const aiResponse = document.getElementById("aiResponse");
+const aiInput = document.getElementById("aiInput");
+const notify = document.getElementById("notify");
 
+// Local storage helper
 function getData(){
-  return JSON.parse(localStorage.getItem("aiTransform")) || {
-    name:"",age:"",goal:"",personality:"",
-    day:1,xp:0,level:1,achievements:[],history:[]
-  };
+  let d = JSON.parse(localStorage.getItem("ultraAI"));
+  if(!d){
+    d = {name:"",age:"",goal:"",personality:"",day:1,streak:0,xp:0,level:1,history:[],achievements:[],lastComplete:0};
+  }
+  return d;
 }
+function saveData(d){ localStorage.setItem("ultraAI", JSON.stringify(d)); }
 
-function saveData(d){
-  localStorage.setItem("aiTransform",JSON.stringify(d));
-}
-
+// Start App
 function startApp(){
-  let d=getData();
-  d.name=nameInput.value;
-  d.age=ageInput.value;
-  d.goal=goalInput.value;
-  d.personality=personalityInput.value;
+  let d = getData();
+  d.name = nameInput.value.trim();
+  d.age = ageInput.value.trim();
+  d.goal = goalInput.value;
+  d.personality = personalityInput.value;
   saveData(d);
-
   setup.style.display="none";
   app.style.display="block";
-
   loadApp();
-  generateTasks();
+  generateDailyTask();
 }
 
+// Load UI
 function loadApp(){
-  let d=getData();
-  welcome.innerText="Welcome "+d.name;
-  dayEl.innerText="Day "+d.day+" / 100";
-  progressBar.value=d.day;
-
-  levelText.innerText=d.level;
-
-  let percent=(d.xp/(d.level*200))*100;
-  if(percent>100) percent=100;
-  xpFill.style.width=percent+"%";
-
+  let d = getData();
+  dayText.innerText = `Day ${d.day} • Level ${d.level}`;
+  streakText.innerText = d.streak;
+  animateXP(d.xp,d.level);
   renderAchievements();
 }
 
-function generateTasks(){
-  let d=getData();
-  let main="Stay consistent today 🔥";
-  let extras="• Improve 1%<br>• Stay disciplined";
-
-  if(d.goal==="muscle gain"){
-    main="Train hard for 45 mins 💪";
-    extras="• Eat protein<br>• Stretch";
-  }
-  if(d.goal==="weight loss"){
-    main="30 min cardio 🔥";
-    extras="• No junk<br>• Drink water";
-  }
-  if(d.goal==="productivity"){
-    main="2 hour deep focus 📚";
-    extras="• No social media<br>• Plan tomorrow";
-  }
-
-  dailyTask.innerText=main;
-  extraTasks.innerHTML="<h4>📋 Extra Tasks</h4>"+extras;
+// Animate XP bar
+function animateXP(xp,level){
+  let percent = (xp/(level*200))*100;
+  if(percent>100) percent=100;
+  xpText.innerText = xp;
+  xpFill.style.width = percent+"%";
 }
 
-function completeDay(){
-  let d=getData();
-  d.day++;
-  d.xp+=50;
-  d.history.push("Day "+d.day+" done");
-
-  if(d.xp>=d.level*200){
-    d.level++;
-    d.xp=0;
-    showNotify("LEVEL UP! 🚀");
+// Daily Task
+async function generateDailyTask(){
+  let d = getData();
+  dailyTask.innerText = "Loading...";
+  try{
+    const res = await fetch("/.netlify/functions/ai",{
+      method:"POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({type:"daily",goal:d.goal,personality:d.personality,day:d.day,name:d.name})
+    });
+    const result = await res.json();
+    dailyTask.innerText = result.reply || "Stay consistent today 🔥";
+  }catch{
+    dailyTask.innerText = "Stay consistent today 🔥";
   }
-
-  unlockAchievements(d);
-  saveData(d);
-  loadApp();
-  showNotify("Great job! Keep going 🔥");
+  generateExtraTasks();
 }
 
-function unlockAchievements(d){
-  if(d.day===7 && !d.achievements.includes("7 Day Warrior"))
-    d.achievements.push("7 Day Warrior");
-  if(d.day===30 && !d.achievements.includes("30 Day Beast"))
-    d.achievements.push("30 Day Beast");
-  if(d.day===100 && !d.achievements.includes("100 Day Legend"))
-    d.achievements.push("100 Day Legend");
-}
-
-function renderAchievements(){
-  achievementsEl.innerHTML="";
-  let d=getData();
-  d.achievements.forEach(a=>{
-    achievementsEl.innerHTML+=`<span class="badge">${a}</span>`;
+// Extra Tasks
+function generateExtraTasks(){
+  extraTasks.innerHTML = "";
+  const tasks = ["Improve 1% today","Track your progress","Stay disciplined"];
+  tasks.forEach(t=>{
+    extraTasks.innerHTML += `<div class="taskItem"><input type="checkbox"> ${t}</div>`;
   });
 }
 
-function askAI(){
-  let q=prompt("Ask your AI Coach:");
+// Complete Day
+function completeDay(){
+  let d = getData();
+  const now = Date.now();
+  const diff = now - d.lastComplete;
+  if(diff < 86400000){ showNotify("Come back tomorrow 🔥"); return; }
+  if(diff > 172800000) d.streak=0;
+  d.day++; d.streak++; d.xp+=50;
+  d.history.push(`Day ${d.day} completed`);
+  document.getElementById("completeSound").play();
+  if(d.xp >= d.level*200){ d.level++; d.xp=0; document.getElementById("levelSound").play(); showNotify("LEVEL UP 🚀"); }
+  unlockAchievements(d);
+  d.lastComplete = now;
+  saveData(d);
+  loadApp();
+  generateDailyTask();
+  showNotify("Great job! 🔥");
+}
+
+// Achievements
+function unlockAchievements(d){
+  const awards = {7:"7 Day Warrior",30:"30 Day Beast",100:"100 Day Legend"};
+  if(awards[d.day] && !d.achievements.includes(awards[d.day])){ d.achievements.push(awards[d.day]); }
+}
+function renderAchievements(){
+  let d = getData();
+  achievements.innerHTML = "";
+  d.achievements.forEach(a=>{ achievements.innerHTML += `<span class="badge">${a}</span>`; });
+}
+
+// AI Coach
+async function askAI(){
+  let q = aiInput.value.trim();
   if(!q) return;
-  let d=getData();
-  aiResponse.innerText=
-  "As your "+d.personality+" coach: Stay focused on "+d.goal+" and don't quit 🔥";
+  let d = getData();
+  aiResponse.innerText = "Thinking... 🤖";
+  try{
+    const res = await fetch("/.netlify/functions/ai",{
+      method:"POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({type:"assistant",question:q,goal:d.goal,personality:d.personality,name:d.name})
+    });
+    const result = await res.json();
+    aiResponse.innerText = result.reply || "Stay consistent and focused 🔥";
+  }catch(err){
+    console.error(err);
+    aiResponse.innerText = "AI Coach is not available right now 🔥";
+  }
+  aiInput.value = "";
 }
 
-function showNotify(msg){
-  notify.innerText=msg;
-  notify.style.display="block";
-  setTimeout(()=>{ notify.style.display="none"; },2500);
-}
+// Notifications
+function showNotify(msg){ notify.innerText = msg; notify.style.display="block"; setTimeout(()=>{notify.style.display="none";},2500); }
 
-function showHistory(){
-  let d=getData();
-  alert(d.history.join("\n"));
-}
+// History
+function showHistory(){ let d = getData(); if(d.history.length) alert(d.history.join("\n")); else alert("No history yet."); }
 
-if(localStorage.getItem("aiTransform")){
+// Auto-load
+if(localStorage.getItem("ultraAI")){
   setup.style.display="none";
   app.style.display="block";
   loadApp();
-  generateTasks();
+  generateDailyTask();
 }
-
 </script>
+
 </body>
 </html>
